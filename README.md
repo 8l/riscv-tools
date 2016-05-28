@@ -1,7 +1,7 @@
 riscv-tools [![Build Status](https://travis-ci.org/riscv/riscv-tools.svg?branch=master)](https://travis-ci.org/riscv/riscv-tools)
 ===========================================================================
 
-Three guides are available for this repo:
+This repo provides guides and references:
 
 1. [Quickstart](#quickstart)
 
@@ -9,6 +9,7 @@ Three guides are available for this repo:
 
 3. [The Linux/RISC-V Installation Manual](#linuxman)
 
+4. [References](#references)
 
 
 
@@ -21,15 +22,15 @@ Three guides are available for this repo:
 
 Ubuntu packages needed:
 
-	$ sudo apt-get install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf
+	$ sudo apt-get install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc
 
 
-Note: This requires GCC >= 4.8 for C++11 support (including thread_local).
-To use a compiler different than the default (for example on OS X), use:
+_Note:_ This requires a compiler with C++11 support (e.g. GCC >= 4.8).
+To use a compiler different than the default, use:
 
-	$ CC=gcc-4.8 CXX=g++-4.8 ./build.sh
+	$ CC=gcc-5 CXX=g++-5 ./build.sh
 
-
+_Note for OS X:_ We recommend using [Homebrew](http://brew.sh) to install the dependencies (`gawk gnu-sed gmp mpfr libmpc isl`) or even to install the tools [directly](https://github.com/riscv/homebrew-riscv). This repo will build with Apple's command-line developer tools (clang) in addition to gcc.
 
 
 # <a name="newlibman"></a>The RISC-V GCC/Newlib Toolchain Installation Manual
@@ -190,7 +191,7 @@ flex, bison, autotools, libmpc, libmpfr, and libgmp. Ubuntu distribution
 installations will require this command to be run. If you have not installed
 these things yet, then run this:
 
-	O$ sudo apt-get install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf
+	O$ sudo apt-get install autoconf automake autotools-dev curl libmpc-dev libmpfr-dev libgmp-dev gawk build-essential bison flex texinfo gperf libtool patchutils bc
 
 Before we start installation, we need to set the
 `$RISCV` environment variable. The variable is used throughout the
@@ -281,17 +282,16 @@ website](http://ocf.berkeley.edu/~qmn/linux/install.html)
 
 1.  Introduction
 2.  Table of Contents
-3.  [Meta-installation Notes](#meta-installation-notes)
-4.  [Installing the Toolchain](#installing-toolchain)
+3.  [Meta-installation Notes](#meta-installation-notes-linux)
+4.  [Installing the Toolchain](#installing-toolchain-linux)
 5.  [Building the Linux Kernel](#building-linux)
 6.  [Building BusyBox](#building-busybox)
 7.  [Creating a Root Disk Image](#creating-root-disk)
-8.  ["Help! It doesn't work!"](#help-it-doesnt-work)
+8.  ["Help! It doesn't work!"](#help-it-doesnt-work-linux)
 9.  [Optional Commands](#optional-commands)
-10.  [References](#references)
 
 
-## <a name="meta-installation-notes"></a>Meta-installation Notes
+## <a name="meta-installation-notes-linux"></a>Meta-installation Notes
 
 ### Running Shell Commands
 
@@ -341,7 +341,7 @@ not necessary.
 
 		
 
-## <a name="installing-toolchain"></a> Installing the Toolchain (11.81 + &epsilon; SBU)
+## <a name="installing-toolchain-linux"></a> Installing the Toolchain (11.81 + &epsilon; SBU)
 
 Let's start with the directory in which we will install our
 tools. Find a nice, big expanse of hard drive space, and let's call that
@@ -424,26 +424,19 @@ handle 16 make jobs (or conversely, it can handle more), edit
 Since we only need to build a few tools, we will use a
 modified build script, listed in its entirety below. Remember that we'll build
 `riscv64-unknown-linux-gnu-gcc` shortly afterwards. If you want to build the full
-toolchain for later use, see <a href="#full-toolchain-build">here</a>.
+toolchain for later use, see <a href="#full-toolchain-build-linux">here</a>.
 
 
-	[basic-build.sh contents]
+	[build-spike-only.sh contents]
 	1 #!/bin/bash
 	2 . build.common
 	3 build_project riscv-fesvr --prefix=$RISCV
 	4 build_project riscv-isa-sim --prefix=$RISCV --with-fesvr=$RISCV
 
 
-Download this script using this command:
+Run the build script.
 
-	$ curl -L http://riscv.org/install-guides/linux-build.sh > basic-build.sh
-
-(The `-L` option allows curl to handle redirects.)
-Make the script executable, and with everything else taken care of, run the
-build script.
-
-	$ chmod +x basic-build.sh
-	$ ./basic-build.sh
+	$ ./build-spike-only.sh
 	
 
 ### <a name="full-toolchain-build-back"></a> Building `riscv64-unknown-linux-gnu-gcc` (11.41 SBU)
@@ -520,7 +513,7 @@ specify the `ARCH=riscv` in each invocation of `make`.
 This line is no exception. If you want to speed up the process, you can pass the
 `-j [number]` option to make.
 
-	$ make -j ARCH=riscv
+	$ make -j16 ARCH=riscv
 
 Congratulations! You've just cross-compiled the Linux kernel
 for RISC-V! However, there are a few more things to take care of before we boot 
@@ -588,7 +581,7 @@ _BusyBox menuconfig interface. Looks familiar, eh?_
 Once you've finished, make BusyBox. You don't need to specify
 `$ARCH`, because we've passed the name of the cross-compiler prefix.
 
-	$ make -j
+	$ make -j16
 
 Once that completes, you now have a BusyBox binary
 cross-compiled to run on RISC-V. Now we'll need a way for the kernel to access
@@ -718,7 +711,7 @@ execution. We will need to load in the root disk image through the
 `+disk` argument to `spike` as well. The command looks
 like this:
 
-	$ spike +disk=root.bin vmlinux
+	$ spike +disk=root.bin bbl vmlinux
 
 `vmlinux` is the name of the compiled Linux kernel binary.
 
@@ -739,7 +732,7 @@ symbolic links to BusyBox applets. Otherwise, it will generate several
 (harmless) warnings in each subsequent boot.
 		
 
-## <a name="help-it-doesnt-work"></a> "Help! It doesn't work!"
+## <a name="help-it-doesnt-work-linux"></a> "Help! It doesn't work!"
 
 I know, I've been there too. Good luck!		
 
@@ -845,7 +838,7 @@ BusyBox as a static binary (no shared libs)" in BusyBox Settings
 
 Then, rebuild and reinstall BusyBox into `mnt/bin`.
 
-	O$ make -j
+	O$ make -j16
 	O$ cd $TOP/linux-3.14.33/mnt
 	O$ cp $TOP/busybox-1.21.1/busybox bin
 
